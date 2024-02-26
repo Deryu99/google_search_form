@@ -31,6 +31,6 @@ $string['google_search_form:myaddinstance'] = 'Add a new Form Google Search bloc
 $string['privacy:metadata'] = 'Form Google Search block does not store any personal data';
 
 // For google custom search API
-$string['google_search_apikey'] = 'AIzaSyBBHp0O3-WUfzwQc0u9qFzgpJYsCsLukVw';
-$string['google_search_searchengineid'] = '53fce5df31b884201';
-//$string['searchterm'] = 'Google Custom Search';
+$string['google_search_form_apikey'] = 'AIzaSyBBHp0O3-WUfzwQc0u9qFzgpJYsCsLukVw';
+$string['google_search_form_searchengineid'] = '53fce5df31b884201';
+$string['enter_search_term'] = 'Enter a search term';

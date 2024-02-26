@@ -37,7 +37,8 @@ class block_google_search_form extends block_base {
      *
      * @return stdClass The block contents.
      */
-    public function get_content() {
+    public function get_content()
+    {
         if ($this->content !== null) {
             return $this->content;
         }
@@ -52,63 +53,57 @@ class block_google_search_form extends block_base {
         $this->content->icons = array();
         $this->content->footer = '';
 
-        // Create form elements directly within get_content
-        $mform = new MoodleQuickForm(null, 'post', '', '', null, true);
+        // Instantiate the search form
+        $search_form = new \block_google_search_form\form\simple_html_form();
 
-        $mform->addElement('text', 'search_term', 'Search Term');
-        $mform->addElement('submit', 'submitbutton', 'Submit');
+        if ($search_form->is_cancelled()) {
+            // Handle cancel operation if applicable
+        } else if ($search_form->get_data()) {
+            if ($form_data = $search_form->get_data()) {
+                // Include JavaScript code here to handle AJAX request
 
-        // If the form was submitted
-        if ($mform->isSubmitted()) {
-            // Get the submitted search query
-            $data = $mform->getSubmitValues();
-            $search_query = urlencode($data['search_term']);
 
-            // Make the Google Custom Search API request
-            $api_key = get_config('block_google_search_form', 'google_search_apikey');
-            $search_engine_id = get_config('block_google_search_form', 'google_search_searchengineid');
-            $url = "https://www.googleapis.com/customsearch/v1?key={$api_key}&cx={$search_engine_id}&q={$search_query}";
+                // Check if there is a response from the AJAX request
+                if (isset($_POST['ajax_response'])) {
+                    // Retrieve the response from the AJAX request
+                    $response = $_POST['ajax_response'];
 
-            // Make API request
-            $response = file_get_contents($url);
+                    // Process the response here
+                    // You can decode the JSON response and handle it accordingly
+                    $decoded_response = json_decode($response);
 
-            // Check if response was successful
-            if ($response !== false) {
-                // Decode the JSON response
-                $decoded_response = json_decode($response);
+                    // Check if decoding was successful and if items exist in the response
+                    if ($decoded_response !== null && property_exists($decoded_response, 'items')) {
+                        $items = $decoded_response->items;
+                        $displayedResults = '';
 
-                // Check if decoding was successful and if items exist in the response
-                if ($decoded_response !== null && property_exists($decoded_response, 'items')) {
-                    $items = $decoded_response->items;
-                    $displayedResults = '';
+                        // Iterate through each item and extract relevant fields
+                        foreach ($items as $item) {
+                            // Construct HTML for each result
+                            $result_html = '<div class="form-search-result">';
+                            $result_html .= '<h3>' . $item->title . '</h3>';
+                            $result_html .= '<p>' . $item->snippet . '</p>';
+                            $result_html .= '</div>';
 
-                    // Iterate through each item and extract relevant fields
-                    foreach ($items as $item) {
-                        // Construct HTML for each result
-                        $result_html = '<div class="form-search-result">';
-                        $result_html .= '<h3>' . $item->title . '</h3>';
-                        $result_html .= '<p>' . $item->snippet . '</p>';
-                        $result_html .= '</div>';
+                            // Append to the overall HTML string
+                            $displayedResults .= $result_html;
+                        }
 
-                        // Append to the overall HTML string
-                        $displayedResults .= $result_html;
+                        // Display relevant aspects of JSON
+                        $this->content->text = '<div class="form-search-results">' . $displayedResults . '</div>';
+                    } else {
+                        // Handle case where items are not present in the response
+                        $this->content->text = 'No items found in AJAX response';
                     }
-
-                    // Display relevant aspects of JSON
-                    $this->content->text = '<div class="form-search-results">' . $displayedResults . '</div>';
                 } else {
-                    // Handle case where items are not present in the response
-                    $this->content->text = 'No items found in API response';
+                    // If there is no response from the AJAX request, display a message
+                    $this->content->text = 'No response received from AJAX request';
                 }
-            } else {
-                // Handle case where API request failed
-                $this->content->text = json_encode(array('error' => 'Failed to retrieve data from API'));
             }
+        } else {
+            // Display the form
+            $this->content->text = $search_form->render();
         }
-
-        // Add the form to the block content
-        $this->content->text .= $mform->toHtml();
-
         return $this->content;
     }
 
