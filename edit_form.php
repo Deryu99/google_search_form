@@ -34,9 +34,5 @@ class block_google_search_form_edit_form extends block_edit_form {
         $mform->addElement('header', 'configheader', get_string('blocksettings', 'block'));
 
         // Please keep in mind that all elements defined here must start with 'config_'.
-        // Example text input for configuring the block.
-        //$mform->addElement('text', 'config_search_term', get_string('searchterm', 'block_google_search_form'));
-        //$mform->setDefault('config_search_term', 'Moodle Blocks');
-        //$mform->setType('config_search_term', PARAM_TEXT);
     }
 }
