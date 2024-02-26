@@ -58,18 +58,23 @@ class block_google_search_form extends block_base {
 
         if ($search_form->is_cancelled()) {
             // Handle cancel operation if applicable
-        } else if ($search_form->get_data()) {
-            if ($form_data = $search_form->get_data()) {
-                // Include JavaScript code here to handle AJAX request
 
+        } else if ($search_form->is_Submitted()) {
+            // Get the submitted search query
+            if ($data = $search_form->get_data()) {
+                $search_query = urlencode($data->config_search_term);
 
-                // Check if there is a response from the AJAX request
-                if (isset($_POST['ajax_response'])) {
-                    // Retrieve the response from the AJAX request
-                    $response = $_POST['ajax_response'];
+                // Make the Google Custom Search API request
+                $api_key = get_config('block_google_search_form', 'google_search_apikey');
+                $search_engine_id = get_config('block_google_search_form', 'google_search_searchengineid');
+                $url = "https://www.googleapis.com/customsearch/v1?key={$api_key}&cx={$search_engine_id}&q={$search_query}";
 
-                    // Process the response here
-                    // You can decode the JSON response and handle it accordingly
+                // Make API request
+                $response = file_get_contents($url);
+
+                // Check if response was successful
+                if ($response !== false) {
+                    // Decode the JSON response
                     $decoded_response = json_decode($response);
 
                     // Check if decoding was successful and if items exist in the response
@@ -93,12 +98,15 @@ class block_google_search_form extends block_base {
                         $this->content->text = '<div class="form-search-results">' . $displayedResults . '</div>';
                     } else {
                         // Handle case where items are not present in the response
-                        $this->content->text = 'No items found in AJAX response';
+                        $this->content->text = 'No items found in API response';
                     }
                 } else {
-                    // If there is no response from the AJAX request, display a message
-                    $this->content->text = 'No response received from AJAX request';
+                    // Handle case where API request failed
+                    $this->content->text = json_encode(array('error' => 'Failed to retrieve data from API'));
                 }
+            } else {
+                // Form validation failed, redisplay the form
+                $this->content->text = $search_form->get_data();
             }
         } else {
             // Display the form

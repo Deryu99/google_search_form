@@ -6,73 +6,78 @@ require_once("$CFG->libdir/formslib.php");
 
 class simple_html_form extends \moodleform
 {
-    public function definition()
-    {
-        global $PAGE;
+    public function definition() {
         $mform = $this->_form;
 
-        $mform->addElement('text', 'config_search_term', get_string('enter_search_term', 'block_google_search_form'));
-        $mform->setType('config_search_term', PARAM_TEXT);
-        $mform->setDefault('config_search_term', 'Moodle Blocks');
+        $mform->addElement('text', 'myfield', 'My Field');
+        $mform->setType('myfield', PARAM_TEXT);
+        $mform->addRule('myfield', 'Please enter a value', 'required', null, 'client');
 
-        // Define JavaScript function separately
-        $ajax_script = <<<EOD
-function handleFormSubmission(form) {
-    var search_term = form.elements['config_search_term'].value;
-    var api_key = 'AIzaSyBBHp0O3-WUfzwQc0u9qFzgpJYsCsLukVw';
-    var search_engine_id = '53fce5df31b884201';
-    var url = "https://www.googleapis.com/customsearch/v1?key=" + api_key + "&cx=" + search_engine_id + "&q=" + search_term;
-
-    fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                document.getElementById('{$this->instance->id}').innerHTML = formatResults(data.results);
-            } else {
-                console.error(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching search results:', error);
-        });
-}
-
-function formatResults(results) {
-    var html = '<div class="form-search-results">';
-    results.forEach(result => {
-        html += '<div class="form-search-result">';
-        html += '<h3>' + result.title + '</h3>';
-        html += '<p>' + result.snippet + '</p>';
-        html += '</div>';
-    });
-    html += '</div>';
-    return html;
-}
-
-// Define the handleFormSubmission function in the global scope
-window.handleFormSubmission = handleFormSubmission;
-
-// Prevent form submission on Enter key press
-document.getElementById('config_search_term').addEventListener('keydown', function(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-    }
-EOD;
-
-        // Add JavaScript to the head section of the HTML document
-        $PAGE->requires->js_init_code($ajax_script);
-
-        // Add a submit button with the onclick event calling the JavaScript function
-        $mform->addElement('button', 'submit_button', 'Submit', array('onclick' => 'handleFormSubmission(this.form); return false;'));
+        $this->add_action_buttons();
     }
 
-    // Custom validation should be added here.
+    // Define custom validation logic
     function validation($data, $files) {
-        return [];
+        $errors = parent::validation($data, $files);
+        if (empty($data['myfield'])) {
+            $errors['myfield'] = 'Please enter a value';
+        }
+        return $errors;
     }
+
+    // Define custom processing logic
+    function submit($data) {
+        global $OUTPUT;
+
+        // Check if the form is being submitted
+        if (isset($data['submitbutton'])) {
+            // Retrieve the search term from the submitted form data
+            $search_term = $data['search_term'];
+
+            // Construct the request to the Google API with the search term
+            $api_key = get_config('block_google_search_form', 'google_search_apikey');
+            $search_engine_id = get_config('block_google_search_form', 'google_search_searchengineid');
+            $url = "https://www.googleapis.com/customsearch/v1?key={$api_key}&cx={$search_engine_id}&q={$search_term}";
+
+            // Make API request
+            $response = file_get_contents($url);
+
+            // Check if response was successful
+            if ($response !== false) {
+                // Decode the JSON response
+                $decoded_response = json_decode($response);
+
+                // Check if decoding was successful and if items exist in the response
+                if ($decoded_response !== null && property_exists($decoded_response, 'items')) {
+                    $items = $decoded_response->items;
+                    $displayedResults = '';
+
+                    // Iterate through each item and extract relevant fields
+                    foreach ($items as $item) {
+                        // Construct HTML for each result
+                        $result_html = '<div class="form-search-result">';
+                        $result_html .= '<h3>' . $item->title . '</h3>';
+                        $result_html .= '<p>' . $item->snippet . '</p>';
+                        $result_html .= '</div>';
+
+                        // Append to the overall HTML string
+                        $displayedResults .= $result_html;
+                    }
+
+                    // Display relevant aspects of JSON
+                    $message = $OUTPUT->notification('<div class="form-search-results">' . $displayedResults . '</div>', 'success');
+                    echo $message;
+                } else {
+                    // Handle case where items are not present in the response
+                    $message = $OUTPUT->notification('No items found in API response', 'error');
+                    echo $message;
+                }
+            } else {
+                // Handle case where API request failed
+                $message = $OUTPUT->notification('Failed to retrieve data from API', 'error');
+                echo $message;
+            }
+        }
+    }
+
 }
