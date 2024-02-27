@@ -32,87 +32,61 @@ class block_google_search_form extends block_base {
         $this->title = get_string('pluginname', 'block_google_search_form');
     }
 
-    /**
-     * Returns the block contents.
-     *
-     * @return stdClass The block contents.
-     */
-    public function get_content()
-    {
-        if ($this->content !== null) {
+    public function get_content() {
+        global $CFG, $OUTPUT;
+
+        if($this->content !== NULL) {
             return $this->content;
         }
 
-        if (empty($this->instance)) {
-            $this->content = '';
-            return $this->content;
-        }
-
-        $this->content = new stdClass();
-        $this->content->items = array();
-        $this->content->icons = array();
+        $this->content = new stdClass;
         $this->content->footer = '';
 
-        // Instantiate the search form
-        $search_form = new \block_google_search_form\form\simple_html_form();
-
-        if ($search_form->is_cancelled()) {
-            // Handle cancel operation if applicable
-
-        } else if ($search_form->is_Submitted()) {
-            // Get the submitted search query
-            if ($data = $search_form->get_data()) {
-                $search_query = urlencode($data->config_search_term);
-
-                // Make the Google Custom Search API request
-                $api_key = get_config('block_google_search_form', 'google_search_apikey');
-                $search_engine_id = get_config('block_google_search_form', 'google_search_searchengineid');
-                $url = "https://www.googleapis.com/customsearch/v1?key={$api_key}&cx={$search_engine_id}&q={$search_query}";
-
-                // Make API request
-                $response = file_get_contents($url);
-
-                // Check if response was successful
-                if ($response !== false) {
-                    // Decode the JSON response
-                    $decoded_response = json_decode($response);
-
-                    // Check if decoding was successful and if items exist in the response
-                    if ($decoded_response !== null && property_exists($decoded_response, 'items')) {
-                        $items = $decoded_response->items;
-                        $displayedResults = '';
-
-                        // Iterate through each item and extract relevant fields
-                        foreach ($items as $item) {
-                            // Construct HTML for each result
-                            $result_html = '<div class="form-search-result">';
-                            $result_html .= '<h3>' . $item->title . '</h3>';
-                            $result_html .= '<p>' . $item->snippet . '</p>';
-                            $result_html .= '</div>';
-
-                            // Append to the overall HTML string
-                            $displayedResults .= $result_html;
-                        }
-
-                        // Display relevant aspects of JSON
-                        $this->content->text = '<div class="form-search-results">' . $displayedResults . '</div>';
-                    } else {
-                        // Handle case where items are not present in the response
-                        $this->content->text = 'No items found in API response';
-                    }
-                } else {
-                    // Handle case where API request failed
-                    $this->content->text = json_encode(array('error' => 'Failed to retrieve data from API'));
-                }
-            } else {
-                // Form validation failed, redisplay the form
-                $this->content->text = $search_form->get_data();
-            }
-        } else {
-            // Display the form
-            $this->content->text = $search_form->render();
+        if (empty($this->instance)) {
+            $this->content->text   = '';
+            return $this->content;
         }
+
+        // Instantiate the renderer for your block
+        $output = $this->page->get_renderer('block_google_search_form');
+
+        // Create an instance of your form class
+        $searchform = new \block_google_search_form\output\simple_html_form($this->page->course->id);
+
+        // Check if the form has been submitted
+        $submitted = optional_param('submitbutton', '', PARAM_ALPHA);
+
+        // Check if the form has been submitted and get search results
+        $search_results = null; // Initialize search results variable
+
+        error_log('This is a test that till here is working');
+
+        if ($submitted && $submitted === 'submit') {
+            // Get form data from the submitted form
+            $data = $this->extract_data($searchform);
+            // Call the submit method to process the form data
+            $search_results = $searchform->submit($data);
+        }
+
+        // Render the form template with the form data and search results
+        $templatecontext = [
+            'form' => $searchform->export_for_template($output),
+            'search_results' => $search_results
+        ];
+
+        $this->content->text = $output->render_from_template('block_google_search_form/simple_html_form', $templatecontext);
+
         return $this->content;
+    }
+
+    private function extract_data($form) {
+        $data = new stdClass();
+        foreach ($form->export_for_template($this) as $key => $value) {
+            if (property_exists($form, $key)) {
+                $data->$key = $value;
+            }
+        }
+        return $data;
     }
 
     /**

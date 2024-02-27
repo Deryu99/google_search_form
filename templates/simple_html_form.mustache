@@ -1,0 +1,33 @@
+{{!
+    @template block_google_search_form/simple_html_form
+
+    This template renders the search form for the Google Custom Search block.
+
+    Example context (json):
+    {
+        "inputname": {{inputname}},
+        "searchstring": "Search Term",
+        "hiddenfields": {
+            "name": "course",
+            "value": "11"
+        },
+         "results": "{{results}}"
+    }
+
+}}
+<div class="searchform">
+    <form method="post" action="{{action}}">
+            <input type="text" name="{{inputname}}" placeholder="{{searchstring}}">
+            <!-- Render the hidden field for course ID -->
+            <input type="hidden" name="{{hiddenfields.name}}" value="{{hiddenfields.value}}">
+            <button type="submit">{{searchstring}}</button>
+    </form>
+    <!-- Display search results -->
+    {{#results}}
+        <div class="form-search-result">
+            <h3>{{title}}</h3>
+            <p>{{snippet}}</p>
+        </div>
+    {{/results}}
+</div>
+
